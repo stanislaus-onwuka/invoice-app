@@ -9,3 +9,12 @@ html{
   padding: 0;
   box-sizing: border-box;
 }
+
+body{
+  font-family: 'Neue Haas Grotesk Display Pro', sans-serif;
+}
+
+.dashboard-menu-bg{
+  background: linear-gradient(180deg, #DAF0FA 0%, #FFFCE2 100%),
+              linear-gradient(0deg, #FFFFFF, #FFFFFF);
+}
