@@ -117,8 +117,6 @@ In the `frontend` directory, you can run:
 
 - `yarn run dev`: Runs the app in development mode.
 - `yarn run build`: Builds the app for production.
-- `npm test`: Runs the test suite.
-- `npm eject`: Ejects the app from Create React App configuration.
 
 ## Backend
 
