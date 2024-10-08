@@ -1,44 +1,64 @@
 const express = require('express');
-const mongoose = require('mongoose');
-const { swaggerUi, swaggerSpec } = require('./swagger');
-const dotenv = require('dotenv');
-
-dotenv.config();
-
-const authRoutes = require('./routes/authRoutes');
-const profileRoutes = require('./routes/profileRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
-const invoiceRoutes = require('./routes/invoiceRoutes');
+const cors = require('cors');
+const http = require('http');
+const WebSocket = require('ws');
+const admin = require('firebase-admin');
+const authenticate = require('./middleware/authMiddleware');
+const mockData = require("./data/invoices")
 
 const app = express();
+const serviceAccount = require('./invoice-app-a7a5b-firebase-adminsdk-frei3-752b2cbd8b.json');
 
-// Middleware
-app.use(express.json());
-
-// Routes
-app.use('/auth', authRoutes);
-app.use('/profile', profileRoutes);
-app.use('/dashboard', dashboardRoutes);
-app.use('/invoices', invoiceRoutes);
-
-// Swagger
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-//Base 
-app.get('/', (req, res) => {
-    res.send('Welcome to Invoices');  
+// Initialize Firebase
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
 });
 
-// Connect to MongoDB
-// mongoose.connect(process.env.MONGO_URI, {
-//   useNewUrlParser: true,
-//   useUnifiedTopology: true,
-// }, () => {
-//   console.log('Connected to MongoDB');
-// });
+app.use(cors());
+app.use(express.json());
 
-// Start the server
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+
+// Get all invoices
+app.get('/api/invoices', authenticate, (req, res) => {
+  res.json(mockData);
+});
+
+// Get single invoice
+app.get('/api/invoices/:id', authenticate, (req, res) => {
+  const item = mockData.find(d => d.id === parseInt(req.params.id, 10));
+  if (item) {
+    res.json(item);
+  } else {
+    res.status(404).send('Item not found');
+  }
+});
+
+// Recent activity 
+app.post('/api/invoices', authenticate, (req, res) => {
+  const newItem = { id: mockData.length + 1, ...req.body };
+  mockData.push(newItem);
+  res.status(201).json(newItem);
+
+  // Broadcast the new data to all connected WebSocket clients
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(mockData));
+    }
+  });
+});
+
+wss.on('connection', (ws) => {
+  console.log('New client connected');
+  ws.send(JSON.stringify(mockData));
+
+  ws.on('close', () => {
+    console.log('Client disconnected');
+  });
+});
+
+server.listen(5000, () => {
+  console.log('Server is running on port 5000');
 });
